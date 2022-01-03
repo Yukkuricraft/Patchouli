@@ -36,6 +36,8 @@ class Patchouli:
     plugin_config_mapping: Dict = {}
     plugin_data_mapping: Dict = {}
 
+    discarded_files: Set = set()
+
     @staticmethod
     def get_plugin_name_from_jar(path: Path) -> str:
         if path.suffix != ".jar":
@@ -54,19 +56,31 @@ class Patchouli:
         "ChatFeelings/Data",
     ]
 
+    def __filter_ignored_paths(self, path: Path) -> bool:
+        return not any(
+            [
+                path_to_ignore in str(path)
+                for path_to_ignore in self.yaml_paths_to_ignore
+            ]
+        )
+
     def get_config_files_from_path(self, path: Path) -> List[str]:
+
+        # TODO: Globbing with ** is slow - esp with dirs like dynmap. Write a wrapper.
         all_files = list(path.glob("**/*.yml"))
+
+        # Temp
+        self.discarded_files.update(
+            list(filter(lambda f: not self.__filter_ignored_paths(f), all_files))
+        )
+
         all_files = list(
             filter(
-                lambda fname: not any(
-                    [
-                        path_to_ignore in str(fname)
-                        for path_to_ignore in self.yaml_paths_to_ignore
-                    ]
-                ),
+                self.__filter_ignored_paths,
                 all_files,
             )
         )
+
         return all_files
 
     def populate_plugin_data(self) -> None:
@@ -126,6 +140,11 @@ class Patchouli:
         self.populate_plugin_data()
 
         self.print_plugin_data()
+
+        print()
+        print()
+        for file in self.discarded_files:
+            pass  # print(f"Discarded file: {file}")
 
 
 if __name__ == "__main__":

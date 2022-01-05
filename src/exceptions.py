@@ -6,5 +6,5 @@ class InvalidPluginException(Exception):
     pass
 
 
-class UnidentifiablePluginFolderException(Exception):
+class UnidentifiablePluginDirException(Exception):
     pass

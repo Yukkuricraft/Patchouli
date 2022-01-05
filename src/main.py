@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
+import os
 import sys
+import logging
+import logging.config
+
+logging.config.fileConfig("logging.conf")
+
 from pathlib import Path
 
 path_root = Path(__file__).parents[1]
 sys.path.append(str(path_root))
 
-import os
-import yaml
-from zipfile import ZipFile
+from typing import Optional, Set, Dict, List
 
-from typing import Set, Dict, List
-
+import src.utils as utils
+from src.mytypes import *
 from src.exceptions import (
-    InvalidPathException,
-    InvalidPluginException,
-    UnidentifiablePluginFolderException,
+    UnidentifiablePluginDirException,
 )
 
 
@@ -26,57 +28,61 @@ PLUGIN_FOLDERS_TO_IGNORE = [
     "bStats",
 ]
 
+# List of directories in the plugin folder.
+# Eg, for {'ChatFeelings': ['Data']} => "ChatFeelings/Data/* will be ignored.
+# YAML_CONFIG_PATHS_TO_IGNORE: Dict[PluginName,List[Path]] = [
+#    "InventoryRollbackPlus": ["backups"],
+#    "InventoryRollback": ["saves"],
+#    "Essentials": ["userdata"],
+#    "ChatFeelings": ["Data"],
+# ]
+YAML_CONFIG_PATHS_TO_IGNORE: List[Path] = [
+    "InventoryRollbackPlus/backups",
+    "InventoryRollback/saves",
+    "Essentials/userdata",
+    "ChatFeelings/Data",
+]
+
 
 class Patchouli:
+    logger: logging.Logger
+
     plugin_path_base: Path = Path(PLUGIN_PATH_BASE)
 
-    plugin_names: Set = set()
-    plugin_jar_mapping: Dict = {}
-    plugin_dir_mapping: Dict = {}
-    plugin_config_mapping: Dict = {}
-    plugin_data_mapping: Dict = {}
+    plugin_names: Set[PluginName] = set()
+    plugin_jar_mapping: Dict[PluginName, PluginJar] = {}
+    plugin_dir_mapping: Dict[PluginName, PluginDir] = {}
+    plugin_config_mapping: Dict[PluginName, List[PluginConfigFile]] = {}
+    plugin_data_mapping: Dict[PluginName, List[PluginDataFile]] = {}
 
-    discarded_files: Set = set()
+    yaml_config_paths_to_ignore: List[Path]
 
-    @staticmethod
-    def get_plugin_name_from_jar(path: Path) -> str:
-        if path.suffix != ".jar":
-            raise InvalidPathException
+    discarded_files: Set[Path] = set()
 
-        with ZipFile(path, "r").open("plugin.yml") as f:
-            yaml_as_dict = yaml.safe_load(f)
-            if "name" not in yaml_as_dict:
-                raise InvalidPluginException
-            return yaml_as_dict["name"]
+    def __init__(self, logger=None):
+        self.logger = logger if logger is not None else logging.getLogger(__name__)
 
-    yaml_paths_to_ignore = [
-        "InventoryRollbackPlus/backups",
-        "InventoryRollback/saves",
-        "Essentials/userdata",
-        "ChatFeelings/Data",
-    ]
+        self.yaml_config_paths_to_ignore = [
+            self.plugin_path_base / ignored_path
+            for ignored_path in YAML_CONFIG_PATHS_TO_IGNORE
+        ]
 
-    def __filter_ignored_paths(self, path: Path) -> bool:
-        return not any(
-            [
-                path_to_ignore in str(path)
-                for path_to_ignore in self.yaml_paths_to_ignore
-            ]
-        )
-
-    def get_config_files_from_path(self, path: Path) -> List[str]:
-
+    def get_config_files_from_path(self, plugin_dir: PluginDir) -> List[str]:
         # TODO: Globbing with ** is slow - esp with dirs like dynmap. Write a wrapper.
-        all_files = list(path.glob("**/*.yml"))
+
+        all_files = utils.find_all_files_with_exts(
+            plugin_dir, [".yml", ".yaml", ".conf"], self.yaml_config_paths_to_ignore
+        )
+        all_files = list(plugin_dir.glob("**/*.yml"))
 
         # Temp
         self.discarded_files.update(
-            list(filter(lambda f: not self.__filter_ignored_paths(f), all_files))
+            list(filter(lambda f: not utils.filter_ignored_paths(f), all_files))
         )
 
         all_files = list(
             filter(
-                self.__filter_ignored_paths,
+                utils.filter_ignored_paths,
                 all_files,
             )
         )
@@ -92,7 +98,7 @@ class Patchouli:
         ]
 
         for jar_path in jar_paths:
-            plugin_name = self.__class__.get_plugin_name_from_jar(jar_path)
+            plugin_name = utils.get_plugin_name_from_jar(jar_path)
 
             self.plugin_names.add(plugin_name)
             self.plugin_jar_mapping[plugin_name] = jar_path
@@ -108,45 +114,49 @@ class Patchouli:
             plugin_name = plugin_dir.name
 
             if plugin_name not in self.plugin_names:
-                raise UnidentifiablePluginFolderException(plugin_dir)
+                raise UnidentifiablePluginDirException(plugin_dir)
 
             self.plugin_dir_mapping[plugin_name] = plugin_dir
 
         # Config files - if a directory exists.
-        for plugin_name, plugin_folder_path in self.plugin_dir_mapping.items():
-            files = self.get_config_files_from_path(plugin_folder_path)
+        for plugin_name, plugin_dir_path in self.plugin_dir_mapping.items():
+            files = self.get_config_files_from_path(plugin_dir_path)
             self.plugin_config_mapping[plugin_name] = files
 
     def print_plugin_data(self) -> None:
         for plugin in self.plugin_names:
-            print()
-            print(f"Plugin: {plugin}")
-            print(f"Jar: {self.plugin_jar_mapping[plugin]}")
+            self.logger.info("")
+            self.logger.info(f"Plugin: {plugin}")
+            self.logger.info(f"Jar: {self.plugin_jar_mapping[plugin]}")
 
             if plugin in self.plugin_dir_mapping:
-                print(f"Folder: {self.plugin_dir_mapping[plugin]}")
+                self.logger.info(f"Folder: {self.plugin_dir_mapping[plugin]}")
             else:
-                print("!! Folder: This plugin does not generate a folder")
+                self.logger.info("!! Folder: This plugin does not generate a folder")
 
             if plugin in self.plugin_config_mapping:
                 for file in self.plugin_config_mapping[plugin]:
-                    print(f"- ConfigFile: {file}")
+                    self.logger.info(f"- ConfigFile: {file}")
 
             if plugin in self.plugin_data_mapping:
                 for file in self.plugin_data_mapping[plugin]:
-                    print(f"- DataFile: {file}")
+                    self.logger.info(f"- DataFile: {file}")
 
     def run(self) -> None:
         self.populate_plugin_data()
 
-        self.print_plugin_data()
-
-        print()
-        print()
+        self.logger.info("")
+        self.logger.info("")
         for file in self.discarded_files:
-            pass  # print(f"Discarded file: {file}")
+            pass  # self.logger.info(f"Discarded file: {file}")
+
+        self.logger.info("")
+        self.logger.info("")
+
+        self.print_plugin_data()
 
 
 if __name__ == "__main__":
+
     patchy = Patchouli()
     patchy.run()

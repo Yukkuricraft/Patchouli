@@ -39,34 +39,54 @@ def filter_ignored_paths(path: Path) -> bool:
     return not any([path_to_ignore in str(path) for path_to_ignore in []])
 
 
+def __chop_prefix_from_paths(paths: List[Path]) -> List[Path]:
+    rtn = []
+
+    for path in paths:
+        print(f"Chopping: {path}")
+        chopped = Path(*path.parts[1:])
+        if len(chopped.parts) > 0:
+            rtn.append(chopped)
+
+    return rtn
+
+
 def find_all_files_with_exts(
     base_path: Path,
     extensions: List[str],
     paths_to_ignore: List[Path],
-    # paths_to_ignore: Dict[PluginName, List[Path]],
 ) -> List[str]:
     """
     Extensions should have a dot in front, eg [".yml", ".yaml"]
-    paths_to_ignore should be absolute paths
     """
 
     logger.info(f"Args: {[base_path, extensions, paths_to_ignore]}")
     all_valid_files = []
 
-    for root, dirs, files in os.walk(base_path):
-        root = Path(root)
-
-        if any([root.is_relative_to(ignored_path) for ignored_path in paths_to_ignore]):
-            logger.info(f"Ignored path - Skipping: {file_path}")
-            logger.debug(f"Root: {root}\nignored_paths: {paths_to_ignore}")
-            continue
-
-        for file_name in files:
-            file_path = root / file_name
-            if file_path.suffix not in extensions:
-                logger.debug(f"Invalid suffix - Skipping: {file_path}")
+    try:
+        for child in base_path.iterdir():
+            if any(
+                [child.name == str(ignored_path) for ignored_path in paths_to_ignore]
+            ):
+                logger.info(f"Ignored path - Skipping: {child}")
+                logger.debug(f"Root: {child}\nignored_paths: {paths_to_ignore}")
                 continue
 
-            all_valid_files.append(file_path)
+            if child.is_dir():
+                all_valid_files.extend(
+                    find_all_files_with_exts(
+                        base_path=child,
+                        extensions=extensions,
+                        paths_to_ignore=__chop_prefix_from_paths(paths_to_ignore),
+                    )
+                )
+            else:
+                if child.suffix not in extensions:
+                    logger.debug(f"Invalid suffix - Skipping: {child}")
+                    continue
 
-    return all_valid_files
+                all_valid_files.append(child)
+
+        return all_valid_files
+    except PermissionError as e:
+        return []

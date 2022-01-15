@@ -43,7 +43,6 @@ def __chop_prefix_from_paths(paths: List[Path]) -> List[Path]:
     rtn = []
 
     for path in paths:
-        print(f"Chopping: {path}")
         chopped = Path(*path.parts[1:])
         if len(chopped.parts) > 0:
             rtn.append(chopped)
@@ -60,8 +59,9 @@ def find_all_files_with_exts(
     Extensions should have a dot in front, eg [".yml", ".yaml"]
     """
 
-    logger.info(f"Args: {[base_path, extensions, paths_to_ignore]}")
+    logger.debug(f"Args: {[base_path, extensions, paths_to_ignore]}")
     all_valid_files = []
+    all_invalid_files_and_dirs = []
 
     try:
         for child in base_path.iterdir():
@@ -69,24 +69,26 @@ def find_all_files_with_exts(
                 [child.name == str(ignored_path) for ignored_path in paths_to_ignore]
             ):
                 logger.info(f"Ignored path - Skipping: {child}")
-                logger.debug(f"Root: {child}\nignored_paths: {paths_to_ignore}")
+                all_invalid_files_and_dirs.append(child)
                 continue
 
             if child.is_dir():
-                all_valid_files.extend(
-                    find_all_files_with_exts(
-                        base_path=child,
-                        extensions=extensions,
-                        paths_to_ignore=__chop_prefix_from_paths(paths_to_ignore),
-                    )
+                rec_valid_files, rec_invalid_files = find_all_files_with_exts(
+                    base_path=child,
+                    extensions=extensions,
+                    paths_to_ignore=__chop_prefix_from_paths(paths_to_ignore),
                 )
+                all_valid_files.extend(rec_valid_files)
+                all_invalid_files_and_dirs.extend(rec_invalid_files)
             else:
                 if child.suffix not in extensions:
                     logger.debug(f"Invalid suffix - Skipping: {child}")
+                    all_invalid_files_and_dirs.append(child)
                     continue
 
                 all_valid_files.append(child)
 
-        return all_valid_files
+        return all_valid_files, all_invalid_files_and_dirs
     except PermissionError as e:
-        return []
+        logger.warning(f"Skipping {base_path} due to a permission error!!")
+        return [], [base_path]

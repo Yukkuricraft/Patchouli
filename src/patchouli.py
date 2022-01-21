@@ -13,46 +13,22 @@ logging.config.fileConfig(configpath)
 path_root = Path(__file__).parents[1]
 sys.path.append(str(path_root))
 
-from typing import Optional, Set, Dict, List
+from typing import Optional, Set, Dict, List, Tuple
 
 import src.utils as utils
+from src.config import Config
 from src.mytypes import *
 from src.exceptions import (
     UnidentifiablePluginDirException,
 )
 
 
-PLUGIN_PATH_BASE = "/var/lib/yukkuricraft/prod/plugins"
-
-PLUGIN_FOLDERS_TO_IGNORE = [
-    "Updater",
-    "archive",
-    "bStats",
-]
-
-# List of directories in the plugin folder.
-# Eg, for {'ChatFeelings': ['Data']} => "ChatFeelings/Data/* will be ignored.
-YAML_CONFIG_PATHS_TO_IGNORE: Dict[PluginName, List[Path]] = {
-    "dynmap": ["web/tiles"],
-    "InventoryRollbackPlus": ["backups"],
-    "InventoryRollback": ["saves"],
-    "Essentials": ["userdata"],
-    "ChatFeelings": ["Data"],
-    "PerWorldInventory": ["data", "tmp_bak"],
-}
-
-# YAML_CONFIG_PATHS_TO_IGNORE: List[Path] = [
-#    "InventoryRollbackPlus/backups",
-#    "InventoryRollback/saves",
-#    "Essentials/userdata",
-#    "ChatFeelings/Data",
-# ]
-
-
 class Patchouli:
     logger: logging.Logger
 
-    plugin_path_base: Path = Path(PLUGIN_PATH_BASE)
+    config: Config
+
+    plugin_path_base: Path
 
     plugin_names: Set[PluginName] = set()
     plugin_jar_mapping: Dict[PluginName, PluginJar] = {}
@@ -64,43 +40,40 @@ class Patchouli:
 
     def __init__(self, logger: Optional[logging.Logger] = None):
         self.logger = logger if logger is not None else logging.getLogger(__name__)
-        self.yaml_config_paths_to_ignore = {
+
+        self.config = Config()
+        plugincfg = self.config.plugins
+
+        self.plugin_path_base = Path(plugincfg.base_path)
+
+        self.config_suffixes = plugincfg.config.suffixes
+        self.config_paths_to_ignore = {
             plugin_name: [Path(path) for path in paths]
-            for plugin_name, paths in YAML_CONFIG_PATHS_TO_IGNORE.items()
+            for plugin_name, paths in plugincfg.config.paths_to_ignore.items()
         }
+
+        self.config.printconfig()
 
     def get_config_files_from_plugin_dir(
         self, plugin_name: PluginName, plugin_dir: PluginDir
-    ) -> List[str]:
-        # TODO: Globbing with ** is slow - esp with dirs like dynmap. Write a wrapper.
+    ) -> Tuple[List[Path], List[Path]]:
+
         paths_to_ignore = (
             []
-            if plugin_name not in self.yaml_config_paths_to_ignore
-            else self.yaml_config_paths_to_ignore[plugin_name]
+            if plugin_name not in self.config_paths_to_ignore
+            else self.config_paths_to_ignore[plugin_name]
         )
 
-        all_files = utils.find_all_files_with_exts(
+        (
+            all_valid_config_files,
+            all_ignored_paths_and_dirs,
+        ) = utils.find_all_files_with_exts(
             base_path=plugin_dir,
-            extensions=[".yml", ".yaml", ".conf"],
+            extensions=self.config_suffixes,
             paths_to_ignore=paths_to_ignore,
         )
-        return all_files
 
-        # all_files = list(plugin_dir.glob("**/*.yml"))
-
-        # Temp
-        self.discarded_files.update(
-            list(filter(lambda f: not utils.filter_ignored_paths(f), all_files))
-        )
-
-        all_files = list(
-            filter(
-                utils.filter_ignored_paths,
-                all_files,
-            )
-        )
-
-        return all_files
+        return all_valid_config_files, all_ignored_paths_and_dirs
 
     def populate_plugin_data(self) -> None:
         # Jars
@@ -120,7 +93,7 @@ class Patchouli:
         plugin_dirs = [
             x
             for x in self.plugin_path_base.iterdir()
-            if x.is_dir() and x.name not in PLUGIN_FOLDERS_TO_IGNORE
+            if x.is_dir() and x.name not in self.config.plugins.folders_to_ignore
         ]
 
         for plugin_dir in plugin_dirs:
@@ -133,8 +106,11 @@ class Patchouli:
 
         # Config files - if a directory exists.
         for plugin_name, plugin_dir_path in self.plugin_dir_mapping.items():
-            files = self.get_config_files_from_plugin_dir(plugin_name, plugin_dir_path)
+            files, ignored_files_and_dirs = self.get_config_files_from_plugin_dir(
+                plugin_name, plugin_dir_path
+            )
             self.plugin_config_mapping[plugin_name] = files
+            self.discarded_files.update(ignored_files_and_dirs)
 
     def print_plugin_data(self) -> None:
         for plugin in self.plugin_names:
@@ -161,15 +137,9 @@ class Patchouli:
         self.logger.info("")
         self.logger.info("")
         for file in self.discarded_files:
-            pass  # self.logger.info(f"Discarded file: {file}")
+            self.logger.debug(f"Discarded file: {file}")
 
         self.logger.info("")
         self.logger.info("")
 
         self.print_plugin_data()
-
-
-if __name__ == "__main__":
-
-    patchy = Patchouli()
-    patchy.run()

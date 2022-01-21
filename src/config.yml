@@ -1,0 +1,45 @@
+plugins:
+  base_path: "/var/lib/yukkuricraft/prod/plugins"
+  folders_to_ignore:
+    - Updater
+    - archive
+    - bStats
+  config:
+    suffixes:
+      - .yml
+      - .yaml
+      - .conf
+      - .lang
+      - .txt
+    suffixes_override:
+      LuckPerms:
+        - .json
+    paths_to_ignore:
+      ChatFeelings:
+        - Data
+      Essentials:
+        - userdata
+      GriefDefender:
+        - lib
+      InventoryRollback:
+        - saves
+      InventoryRollbackPlus:
+        - backups
+      LibsDisguises:
+        - SavedSkins
+        - SavedDisguises
+      LuckPerms:
+        - libs
+      OnTime:
+        - reports
+      PerWorldInventory:
+        - data
+        - tmp_bak
+      WorldEdit:
+        - .archive_unpack
+        - sessions
+      dynmap:
+        - web
+        - templates
+        - renderdata
+        - export

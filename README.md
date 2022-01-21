@@ -20,4 +20,23 @@ We make the following observations about the three types of data associated with
 - Plugin data, while usually in plaintext, is not git appropriate as humans do not read or write these files.
 - These should be saved using a standard backup system.
 
+## Installation
+Patchouli is to be used as a `git` subcommand. To do this, we will add this folder to our `PATH` env var.
+
+```
+# Run from root of repo
+export $PATH=$PWD:$PATH
+```
+
+To save this across sessions, add it to your `.bash_profile` or analogous config for your shell of choice.
+
+
+## Usage
+
+|Command|Description|
+|-------|-----------|
+|`git patchy help`||
+|`git patchy show`|List all plugins and their various info. Lists jar path, plugin folder if present, and config files if present.|
+
+
 ## TODO: Write Me

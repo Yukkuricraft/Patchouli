@@ -21,6 +21,7 @@ We make the following observations about the three types of data associated with
 - These should be saved using a standard backup system.
 
 ## Installation
+### Git Command Setup
 Patchouli is to be used as a `git` subcommand. To do this, we will add this folder to our `PATH` env var.
 
 ```
@@ -29,6 +30,12 @@ export $PATH=$PWD:$PATH
 ```
 
 To save this across sessions, add it to your `.bash_profile` or analogous config for your shell of choice.
+
+### Python Packages
+**Note:** Requires python 3.x
+
+Install the packages in `requirements.txt` in your python environment of choice. (eg, `pip install -r requirements.txt`)
+Beware if installing in virtual envs, you may not be able to run the command in all directories depending on your exact setup.
 
 
 ## Usage

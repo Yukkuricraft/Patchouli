@@ -60,8 +60,6 @@ class Patchouli:
             for plugin_name, paths in plugincfg.config.paths_to_ignore.items()
         }
 
-        self.config.printconfig()
-
         self.populate_plugin_data(target_env=self.target_env)
 
     def get_plugin_path_base(self, target_env: str) -> Path:
@@ -131,15 +129,15 @@ class Patchouli:
     def print_plugin_data(self) -> None:
         self.logger.info(f"Printing plugin data for environment: '{self.target_env}'")
 
-        self.logger.info("")
-        self.logger.info("")
+        self.logger.debug("")
+        self.logger.debug("")
         for file in self.discarded_files:
             self.logger.debug(f"Discarded file: {file}")
 
         self.logger.info("")
         self.logger.info("")
 
-        for plugin in self.plugin_names:
+        for plugin in sorted(list(self.plugin_names)):
             self.logger.info("")
             self.logger.info(f"Plugin: {plugin}")
             self.logger.info(f"Jar: {self.plugin_jar_mapping[plugin]}")

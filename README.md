@@ -1,5 +1,7 @@
 # Patchouli - A Plugin VCS Management Tool
 
+![](docs/imgs/git_patchy_show_ss.png)
+
 ## Description
 Patchouli is a tool that attempts to allow splitting of git-appropriate files away from non-git-appropriate files which allows server admins to add plugin configurations to VCS while backing up plugin data files and jars elsewhere.
 

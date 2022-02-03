@@ -1,5 +1,6 @@
+base_path: "/var/lib/yukkuricraft/"
+default_env: "prod"
 plugins:
-  base_path: "/var/lib/yukkuricraft/prod/plugins"
   folders_to_ignore:
     - Updater
     - archive

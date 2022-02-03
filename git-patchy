@@ -19,7 +19,7 @@ class Runner:
             self.parser.print_help(sys.stderr)
             sys.exit(1)
 
-        self.args = self.parser.parse_args()
+        self.args = self.parser.parse_args(sys.argv[1:2])
 
         if not hasattr(self, self.args.command):
             print('Unrecognized subcommand')
@@ -28,11 +28,20 @@ class Runner:
 
         getattr(self, self.args.command)()
 
+    def gen_base_subcommand_argparser(self) -> ArgumentParser:
+        parser = ArgumentParser()
+        parser.add_argument('--env', default=None)
+        return parser
+
     def help(self):
         self.parser.print_help()
 
     def show(self):
-        patchy = Patchouli()
+        parser = self.gen_base_subcommand_argparser()
+        args = parser.parse_args(sys.argv[2:])
+
+        print(args)
+        patchy = Patchouli(target_env=args.env)
         patchy.run()
 
 if __name__ == "__main__":

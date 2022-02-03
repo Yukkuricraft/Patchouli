@@ -46,4 +46,8 @@ Beware if installing in virtual envs, you may not be able to run the command in 
 |`git patchy show`|List all plugins and their various info. Lists jar path, plugin folder if present, and config files if present.|
 
 
+
+## Others
+- [Spec...?](docs/specs.md)
+
 ## TODO: Write Me

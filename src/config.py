@@ -48,8 +48,6 @@ class Config(ConfigNode):
         with open(self.config_path, "r") as f:
             self.data = yaml.safe_load(f)
 
-            pprint(self.data)
-
         super().__init__(self.data)
 
     def printconfig(self):

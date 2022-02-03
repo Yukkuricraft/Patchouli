@@ -7,13 +7,28 @@ logger = logging.getLogger(__name__)
 from zipfile import ZipFile
 from pathlib import Path
 
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Callable
 
 from src.mytypes import *
 from src.exceptions import (
     InvalidPathException,
     InvalidPluginException,
 )
+
+
+# Eh. Maybe too extra.
+def maybe_apply_default_target_env() -> Callable:
+    def decorator(func: Callable) -> Callable:
+        def wrapper(*args, **kwargs):
+            print(args, kwargs)
+            if kwargs["target_env"] is None:
+                kwargs["target_env"] = args[0].config.default_env  # args[0] is 'self'
+
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 def get_plugin_name_from_jar(jar_path: PluginJar) -> str:

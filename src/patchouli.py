@@ -20,6 +20,7 @@ from src.config import Config
 from src.mytypes import *
 from src.exceptions import (
     UnidentifiablePluginDirException,
+    InvalidEnvironmentException,
 )
 
 
@@ -28,7 +29,7 @@ class Patchouli:
 
     config: Config
 
-    plugin_path_base: Path
+    base_path: Path
 
     plugin_names: Set[PluginName] = set()
     plugin_jar_mapping: Dict[PluginName, PluginJar] = {}
@@ -38,14 +39,16 @@ class Patchouli:
 
     discarded_files: Set[Path] = set()
 
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(
+        self, logger: Optional[logging.Logger] = None, target_env: Optional[str] = None
+    ):
         self.logger = logger if logger is not None else logging.getLogger(__name__)
 
         self.config = Config()
+
+        self.base_path = Path(self.config.base_path)
+
         plugincfg = self.config.plugins
-
-        self.plugin_path_base = Path(plugincfg.base_path)
-
         self.config_suffixes = plugincfg.config.suffixes
         self.config_paths_to_ignore = {
             plugin_name: [Path(path) for path in paths]
@@ -53,6 +56,14 @@ class Patchouli:
         }
 
         self.config.printconfig()
+
+        self.populate_plugin_data(target_env=target_env)
+
+    def get_plugin_path_base(self, target_env: str) -> Path:
+        path = self.base_path / target_env / "plugins"
+        if not path.exists():
+            raise InvalidEnvironmentException(path)
+        return path
 
     def get_config_files_from_plugin_dir(
         self, plugin_name: PluginName, plugin_dir: PluginDir
@@ -75,11 +86,12 @@ class Patchouli:
 
         return all_valid_config_files, all_ignored_paths_and_dirs
 
-    def populate_plugin_data(self) -> None:
+    @utils.maybe_apply_default_target_env()
+    def populate_plugin_data(self, target_env: str) -> None:
         # Jars
         jar_paths = [
             x
-            for x in self.plugin_path_base.iterdir()
+            for x in self.get_plugin_path_base(target_env).iterdir()
             if x.is_file() and x.suffix == ".jar"
         ]
 
@@ -92,7 +104,7 @@ class Patchouli:
         # Directories (if created by plugin)
         plugin_dirs = [
             x
-            for x in self.plugin_path_base.iterdir()
+            for x in self.get_plugin_path_base(target_env).iterdir()
             if x.is_dir() and x.name not in self.config.plugins.folders_to_ignore
         ]
 
@@ -132,8 +144,6 @@ class Patchouli:
                     self.logger.info(f"- DataFile: {file}")
 
     def run(self) -> None:
-        self.populate_plugin_data()
-
         self.logger.info("")
         self.logger.info("")
         for file in self.discarded_files:

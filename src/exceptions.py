@@ -8,3 +8,7 @@ class InvalidPluginException(Exception):
 
 class UnidentifiablePluginDirException(Exception):
     pass
+
+
+class InvalidEnvironmentException(Exception):
+    pass

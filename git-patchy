@@ -13,7 +13,7 @@ class Runner:
 
     def __init__(self):
         self.parser = ArgumentParser(description="Patchouli Plugin Manager", usage='''git patchy [help|show]
-    Note:You can add "help" after most subcommands to get more detailed help.
+    Note:You can add "--help" after most subcommands to get more detailed help.
 
     help
         Prints help
@@ -59,7 +59,7 @@ class Runner:
         args = parser.parse_args(sys.argv[2:])
 
         patchy = Patchouli(config=self.config, target_env=args.env)
-        patchy.run()
+        patchy.print_plugin_data()
 
 if __name__ == "__main__":
     runner = Runner()

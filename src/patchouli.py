@@ -25,10 +25,10 @@ from src.exceptions import (
 
 
 class Patchouli:
+    config: Config
     logger: logging.Logger
 
-    config: Config
-
+    target_env: str
     base_path: Path
 
     plugin_names: Set[PluginName] = set()
@@ -48,6 +48,9 @@ class Patchouli:
         self.config = config
         self.logger = logger if logger is not None else logging.getLogger(__name__)
 
+        self.target_env = (
+            target_env if target_env is not None else self.config.default_env
+        )
         self.base_path = Path(self.config.base_path)
 
         plugincfg = self.config.plugins
@@ -59,7 +62,7 @@ class Patchouli:
 
         self.config.printconfig()
 
-        self.populate_plugin_data(target_env=target_env)
+        self.populate_plugin_data(target_env=self.target_env)
 
     def get_plugin_path_base(self, target_env: str) -> Path:
         path = self.base_path / target_env / "plugins"
@@ -88,7 +91,6 @@ class Patchouli:
 
         return all_valid_config_files, all_ignored_paths_and_dirs
 
-    @utils.maybe_apply_default_target_env()
     def populate_plugin_data(self, target_env: str) -> None:
         # Jars
         jar_paths = [
@@ -127,6 +129,16 @@ class Patchouli:
             self.discarded_files.update(ignored_files_and_dirs)
 
     def print_plugin_data(self) -> None:
+        self.logger.info(f"Printing plugin data for environment: '{self.target_env}'")
+
+        self.logger.info("")
+        self.logger.info("")
+        for file in self.discarded_files:
+            self.logger.debug(f"Discarded file: {file}")
+
+        self.logger.info("")
+        self.logger.info("")
+
         for plugin in self.plugin_names:
             self.logger.info("")
             self.logger.info(f"Plugin: {plugin}")
@@ -144,14 +156,3 @@ class Patchouli:
             if plugin in self.plugin_data_mapping:
                 for file in self.plugin_data_mapping[plugin]:
                     self.logger.info(f"- DataFile: {file}")
-
-    def run(self) -> None:
-        self.logger.info("")
-        self.logger.info("")
-        for file in self.discarded_files:
-            self.logger.debug(f"Discarded file: {file}")
-
-        self.logger.info("")
-        self.logger.info("")
-
-        self.print_plugin_data()

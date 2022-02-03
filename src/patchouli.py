@@ -40,11 +40,13 @@ class Patchouli:
     discarded_files: Set[Path] = set()
 
     def __init__(
-        self, logger: Optional[logging.Logger] = None, target_env: Optional[str] = None
+        self,
+        config: Config,
+        logger: Optional[logging.Logger] = None,
+        target_env: Optional[str] = None,
     ):
+        self.config = config
         self.logger = logger if logger is not None else logging.getLogger(__name__)
-
-        self.config = Config()
 
         self.base_path = Path(self.config.base_path)
 

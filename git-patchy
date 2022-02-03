@@ -1,17 +1,29 @@
 #!/usr/bin/env python
 
+import os
 import sys
 from argparse import ArgumentParser
+from pathlib import Path
 
 from src.patchouli import Patchouli
+from src.config import Config
 
 class Runner:
+    config: Config
+
     def __init__(self):
         self.parser = ArgumentParser(description="Patchouli Plugin Manager", usage='''git patchy [help|show]
+    Note:You can add "help" after most subcommands to get more detailed help.
 
-    help    Prints help
-    show    Prints plugin information and various metadata about them.
-                Currently prints plugin name, jar path, folder path if exists, and config file list if exists
+    help
+        Prints help
+
+    list-envs
+        List all valid environments in the configured base path.
+
+    show
+        Prints plugin information and various metadata about them.
+        Currently prints plugin name, jar path, folder path if exists, and config file list if exists
 ''')
         self.parser.add_argument("command", help="Subcommand to run: 'git patchy [help|show]'")
 
@@ -21,27 +33,32 @@ class Runner:
 
         self.args = self.parser.parse_args(sys.argv[1:2])
 
-        if not hasattr(self, self.args.command):
+        self.config = Config()
+
+        subcommand = self.args.command.replace("-", "_")
+        if not hasattr(self, subcommand):
             print('Unrecognized subcommand')
             self.parser.print_help()
             sys.exit(1)
 
-        getattr(self, self.args.command)()
+        getattr(self, subcommand)()
 
-    def gen_base_subcommand_argparser(self) -> ArgumentParser:
-        parser = ArgumentParser()
-        parser.add_argument('--env', default=None)
-        return parser
+    def list_envs(self):
+        print("Valid envs:")
+        for path in Path(self.config.base_path).iterdir():
+            if path.is_dir():
+                print(f"- {path.name}")
 
     def help(self):
         self.parser.print_help()
 
     def show(self):
-        parser = self.gen_base_subcommand_argparser()
+        parser = ArgumentParser(description="Shows plugin information", usage='''git patchy show [--env=prod]
+''')
+        parser.add_argument('--env', default=None, help="Changes what environment we target.")
         args = parser.parse_args(sys.argv[2:])
 
-        print(args)
-        patchy = Patchouli(target_env=args.env)
+        patchy = Patchouli(config=self.config, target_env=args.env)
         patchy.run()
 
 if __name__ == "__main__":

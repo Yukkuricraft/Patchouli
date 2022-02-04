@@ -1,4 +1,8 @@
 import os
+import sys
+import pwd
+import grp
+import getpass
 import yaml
 import logging
 
@@ -7,13 +11,64 @@ logger = logging.getLogger(__name__)
 from zipfile import ZipFile
 from pathlib import Path
 
-from typing import Optional, List, Dict, Callable
+from typing import Optional, Tuple, List, Dict, Callable
 
 from src.mytypes import *
+from src.config import Config
 from src.exceptions import (
     InvalidPathException,
     InvalidPluginException,
+    InvalidEnvironmentException,
+    MustBeRunAsRootException,
 )
+
+__CONFIG = Config()
+__BASE_PATH = Path(__CONFIG.base_path)
+
+
+def ensure_root(func: Callable) -> Callable:
+    def inner(*args, **kwargs):
+        if getpass.getuser() != "root":
+            raise MustBeRunAsRootException("This command must be run as root.")
+        return func(*args, **kwargs)
+
+    return inner
+
+
+def ensure_valid_env(env: str):
+    env_path = __BASE_PATH / env
+
+    if not env_path.exists():
+        raise InvalidEnvironmentException()
+
+    plugins_path = env_path / "plugins"
+    if not plugins_path.exists():
+        inp = input(
+            f"Plugins folder did not exist for env:{env} - Would you like to create one? y/N\n"
+        )
+
+        if len(inp) == 0 or inp[0].lower() != "y":
+            print("User rejected creation.")
+            print(
+                f"Cannot proceed without plugins folder. Please create '{plugins_path}' before trying again."
+            )
+            sys.exit(1)
+
+        try:
+            original_umask = os.umask(0)
+            plugins_path.mkdir(mode=0o755)
+        finally:
+            os.umask(original_umask)
+
+
+def get_uid_gid(user: str, group: str) -> Tuple[int, int]:
+    return pwd.getpwnam(user).pw_uid, grp.getgrnam(group).gr_gid
+
+
+def get_plugin_path_base(env: str) -> Path:
+    ensure_valid_env(env)
+
+    return __BASE_PATH / env / "plugins"
 
 
 def get_plugin_name_from_jar(jar_path: PluginJar) -> str:

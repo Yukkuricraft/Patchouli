@@ -31,12 +31,11 @@ class ConfigNode:
         for k, v in data.items():
             if type(v) in [int, float, str, bool, list]:
                 self.data[k] = v
-            else:
+            elif v is not None:
                 self.data[k] = ConfigNode(dict(v))
 
 
 class Config(ConfigNode):
-
     data: Dict
     config_path: Path
 

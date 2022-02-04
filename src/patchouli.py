@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+import shutil
 
 import logging
 import logging.config
@@ -62,12 +63,6 @@ class Patchouli:
 
         self.populate_plugin_data(target_env=self.target_env)
 
-    def get_plugin_path_base(self, target_env: str) -> Path:
-        path = self.base_path / target_env / "plugins"
-        if not path.exists():
-            raise InvalidEnvironmentException(path)
-        return path
-
     def get_config_files_from_plugin_dir(
         self, plugin_name: PluginName, plugin_dir: PluginDir
     ) -> Tuple[List[Path], List[Path]]:
@@ -93,7 +88,7 @@ class Patchouli:
         # Jars
         jar_paths = [
             x
-            for x in self.get_plugin_path_base(target_env).iterdir()
+            for x in utils.get_plugin_path_base(target_env).iterdir()
             if x.is_file() and x.suffix == ".jar"
         ]
 
@@ -106,7 +101,7 @@ class Patchouli:
         # Directories (if created by plugin)
         plugin_dirs = [
             x
-            for x in self.get_plugin_path_base(target_env).iterdir()
+            for x in utils.get_plugin_path_base(target_env).iterdir()
             if x.is_dir() and x.name not in self.config.plugins.folders_to_ignore
         ]
 
@@ -154,3 +149,40 @@ class Patchouli:
             if plugin in self.plugin_data_mapping:
                 for file in self.plugin_data_mapping[plugin]:
                     self.logger.info(f"- DataFile: {file}")
+
+    @utils.ensure_root
+    def copy_plugin_data(self, dest_env: Optional[str]):
+        """
+        The src_env is understood to be the target_env the class was initialized with.
+        """
+        utils.ensure_valid_env(dest_env)
+
+        dest_env = dest_env if dest_env is not None else self.config.default_copy_to_env
+        dest_path_base = utils.get_plugin_path_base(dest_env)
+
+        self.logger.info(f"Starting copy from {self.target_env} => {dest_env}")
+
+        for plugin_name in self.plugin_config_mapping:
+            for file_path in self.plugin_config_mapping[plugin_name]:
+                dest_path = dest_path_base / plugin_name
+                rel_path = Path(*file_path.parts[len(dest_path.parts) :])
+                dest_path = dest_path / rel_path
+
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                shutil.copy(file_path, dest_path)
+
+                self.logger.debug(f"{file_path} => {dest_path}")
+
+        user, group = self.config.mc_data_user, self.config.mc_data_group
+        uid, gid = utils.get_uid_gid(user, group)
+
+        self.logger.info(
+            f"Recursive chowning dest_env:{dest_env} files to {user}:{group}"
+        )
+        for dirpath, dirnames, filenames in os.walk(dest_path_base):
+            shutil.chown(dirpath, uid, gid)
+            for filename in filenames:
+                self.logger.info(f"{Path(dirpath) / filename} - {uid}:{gid}")
+                shutil.chown(Path(dirpath) / filename, uid, gid)
+
+        self.logger.info("Copy complete.")

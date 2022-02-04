@@ -1,22 +1,47 @@
+# The base path of the server environment data
 base_path: "/var/lib/yukkuricraft/"
+# The default env to run git-patchy commands as
 default_env: "prod"
+# The default target env to copy data to when using `git patchy copy-to`
+default_copy_to_env: "dev1"
+
+# The user:group that should own the files on disk at base_path
+mc_data_user: minecraft
+mc_data_group: minecraft
+
+# Plugin configs
 plugins:
+  # Path to the plugin folder on the filesystem after base_path/$env/
+  relpath_from_env_root: "plugins"
+
+  # Folders in the plugins folder to ignore
   folders_to_ignore:
     - Updater
     - archive
     - bStats
+
+  # Configuration for finding config files
   config:
+    # Default list of suffixes to look for in all plugin folders
     suffixes:
       - .yml
       - .yaml
       - .conf
       - .lang
       - .txt
+
+    # Use this if you need to add or rem suffixes for specific plugins
     suffixes_override:
       LuckPerms:
-        - .json
+        add:
+          - .json
+        rem:
+
+    # Subpaths of plugin folders to ignore.
     paths_to_ignore:
       ChatFeelings:
+        # Eg, ignore 'plugins/ChatFeelings/Data'
+        # Paths may be multiple levels deep, eg Data/smth/else
         - Data
       Essentials:
         - userdata

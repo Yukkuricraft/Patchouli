@@ -12,3 +12,7 @@ class UnidentifiablePluginDirException(Exception):
 
 class InvalidEnvironmentException(Exception):
     pass
+
+
+class MustBeRunAsRootException(Exception):
+    pass

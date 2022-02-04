@@ -46,6 +46,7 @@ Beware if installing in virtual envs, you may not be able to run the command in 
 |-------|-----------|
 |`git patchy help`||
 |`git patchy show`|List all plugins and their various info. Lists jar path, plugin folder if present, and config files if present.|
+| `git patchy copy-to`|Copies config files from `--src_env` to `--dest_env`. See `git patchy copy-to --help` for more info|
 
 
 

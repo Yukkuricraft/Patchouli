@@ -37,13 +37,6 @@ This will do several things:
 - `pip3 install -r requirements.txt`
 - Symlink `git-patchy` to `/usr/bin/git-patchy` so it can be used as a git subcommand.
 
-### Python Packages
-**Note:** Requires python 3.x
-
-Install the packages in `requirements.txt` in your python environment of choice. (eg, `pip install -r requirements.txt`)
-Beware if installing in virtual envs, you may not be able to run the command in all directories depending on your exact setup.
-
-
 ## Usage
 
 |Command|Description|

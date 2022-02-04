@@ -22,16 +22,20 @@ We make the following observations about the three types of data associated with
 - Plugin data, while usually in plaintext, is not git appropriate as humans do not read or write these files.
 - These should be saved using a standard backup system.
 
+## Pre-Requisites
+- Python 3.10
+
 ## Installation
-### Git Command Setup
-Patchouli is to be used as a `git` subcommand. To do this, we will add this folder to our `PATH` env var.
+Patchouli is to be used as a `git` subcommand.
 
-```
-# Run from root of repo
-export $PATH=$PWD:$PATH
-```
+To install, simply run:
+- `./setup.sh`
 
-To save this across sessions, add it to your `.bash_profile` or analogous config for your shell of choice.
+This will do several things:
+- Create a virtualenv using `python3 -m venv` in this directory.
+- Add a shebang to `git-patchy` to direct the shell to use the virtualenv python bin
+- `pip3 install -r requirements.txt`
+- Symlink `git-patchy` to `/usr/bin/git-patchy` so it can be used as a git subcommand.
 
 ### Python Packages
 **Note:** Requires python 3.x
@@ -46,7 +50,7 @@ Beware if installing in virtual envs, you may not be able to run the command in 
 |-------|-----------|
 |`git patchy help`||
 |`git patchy show`|List all plugins and their various info. Lists jar path, plugin folder if present, and config files if present.|
-| `git patchy copy-to`|Copies config files from `--src_env` to `--dest_env`. See `git patchy copy-to --help` for more info|
+|`git patchy copy-to`|Copies config files from `--src_env` to `--dest_env`. See `git patchy copy-to --help` for more info. *Note: This command must be run with sudo*|
 
 
 

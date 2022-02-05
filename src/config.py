@@ -51,3 +51,15 @@ class Config(ConfigNode):
 
     def printconfig(self):
         pprint(self.data)
+
+
+__CONFIG = None
+
+
+def get_config() -> Config:
+    global __CONFIG
+
+    if __CONFIG is None:
+        __CONFIG = Config()
+
+    return __CONFIG

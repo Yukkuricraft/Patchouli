@@ -4,6 +4,14 @@ base_path: "/var/lib/yukkuricraft/"
 default_env: "prod"
 # The default target env to copy data to when using `git patchy copy-to`
 default_copy_to_env: "dev1"
+# If any directory does not yet exist for a given env - such as its env folder, plugins folder, etc - create the directory by default.
+# If set to 'false', tool will error out if any needed directory does not exist.
+default_create_missing_dirs: true
+
+# Regex validating env names. PCRE mostly works, but it's put through Python's regex engine.
+# Case sensitive. Careful of the anchors.
+# Default: ^(?:vcs|prod|dev\d+)$ allows envs: vcs, prod, and dev# where # is any int
+env_name_regex: ^(?:vcs|prod|dev\d+)$
 
 # The user:group that should own the files on disk at base_path
 mc_data_user: minecraft

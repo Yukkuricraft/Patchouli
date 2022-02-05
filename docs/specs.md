@@ -20,4 +20,3 @@ Create git repository per server being managed. The state of the repo and the st
 - Vice versa
 
 ### Copy files from one env to another
-

@@ -6,7 +6,8 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from src.patchouli import Patchouli
-from src.config import Config
+from src.config import Config, get_config
+import src.utils as utils
 
 class Runner:
     config: Config
@@ -33,7 +34,7 @@ class Runner:
 
         self.args = self.parser.parse_args(sys.argv[1:2])
 
-        self.config = Config()
+        self.config = get_config()
 
         subcommand = self.args.command.replace("-", "_")
         if not hasattr(self, subcommand):
@@ -53,19 +54,25 @@ class Runner:
         self.parser.print_help()
 
     def show(self):
-        parser = ArgumentParser(description="Shows plugin information", usage='''git patchy show [--env=prod]
-''')
-        parser.add_argument('--env', default=None, help="Changes what environment we target.")
+        parser = ArgumentParser(description="Shows plugin information", usage='''git patchy show [--env=prod] ''')
+        parser = utils.add_default_argparse_args(parser)
+        parser.add_argument(
+            "--env",
+            default=None,
+            help="Changes what environment we target. This is also used as the 'src_env' environment for commands that need a src/dest.",
+        )
+
         args = parser.parse_args(sys.argv[2:])
 
         patchy = Patchouli(config=self.config, target_env=args.env)
         patchy.print_plugin_data()
 
     def copy_to(self):
-        parser = ArgumentParser(description="Copies configs from one env to another. Must be run as root.", usage='''sudo git patchy copy-to --src_env="prod" --dest_env="dev1"
-''')
+        parser = ArgumentParser(description="Copies configs from one env to another. Must be run as root.", usage='''sudo git patchy copy-to --src_env="prod" --dest_env="dev1"''')
+        parser = utils.add_default_argparse_args(parser)
         parser.add_argument('--src_env', default=None, help="Environment to copy files from.")
         parser.add_argument('--dest_env', default=None, help="Environment to copy files to.")
+
         args = parser.parse_args(sys.argv[2:])
 
         patchy = Patchouli(config=self.config, target_env=args.src_env)

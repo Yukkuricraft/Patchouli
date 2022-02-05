@@ -45,6 +45,7 @@ class Patchouli:
         config: Config,
         logger: Optional[logging.Logger] = None,
         target_env: Optional[str] = None,
+        create_missing_dirs: Optional[bool] = None,
     ):
         self.config = config
         self.logger = logger if logger is not None else logging.getLogger(__name__)
@@ -60,6 +61,12 @@ class Patchouli:
             plugin_name: [Path(path) for path in paths]
             for plugin_name, paths in plugincfg.config.paths_to_ignore.items()
         }
+
+        self.create_missing_dirs = (
+            create_missing_dirs
+            if create_missing_dirs is not None
+            else self.config.default_create_missing_dirs
+        )
 
         self.populate_plugin_data(target_env=self.target_env)
 
@@ -88,7 +95,9 @@ class Patchouli:
         # Jars
         jar_paths = [
             x
-            for x in utils.get_plugin_path_base(target_env).iterdir()
+            for x in utils.get_plugin_path_base(
+                target_env, create_missing_dirs=self.create_missing_dirs
+            ).iterdir()
             if x.is_file() and x.suffix == ".jar"
         ]
 
@@ -101,7 +110,9 @@ class Patchouli:
         # Directories (if created by plugin)
         plugin_dirs = [
             x
-            for x in utils.get_plugin_path_base(target_env).iterdir()
+            for x in utils.get_plugin_path_base(
+                target_env, create_missing_dirs=self.create_missing_dirs
+            ).iterdir()
             if x.is_dir() and x.name not in self.config.plugins.folders_to_ignore
         ]
 
@@ -150,15 +161,26 @@ class Patchouli:
                 for file in self.plugin_data_mapping[plugin]:
                     self.logger.info(f"- DataFile: {file}")
 
+    def sync_vcs_with_env(self, src_env: Optional[str], dest_env: Optional[str]):
+        """
+        Direction can go either way, vcs -> env or env -> vcs.
+        Direction is defined by src_env and dest_env inputs. Direction should be handled by git-patchy
+        """
+
     @utils.ensure_root
     def copy_plugin_data(self, dest_env: Optional[str]):
         """
         The src_env is understood to be the target_env the class was initialized with.
         """
-        utils.ensure_valid_env(dest_env)
+        utils.ensure_valid_env(
+            dest_env,
+            create_missing_dirs=True,
+        )
 
         dest_env = dest_env if dest_env is not None else self.config.default_copy_to_env
-        dest_path_base = utils.get_plugin_path_base(dest_env)
+        dest_path_base = utils.get_plugin_path_base(
+            dest_env, create_missing_dirs=self.create_missing_dirs
+        )
 
         self.logger.info(f"Starting copy from {self.target_env} => {dest_env}")
 
@@ -182,7 +204,7 @@ class Patchouli:
         for dirpath, dirnames, filenames in os.walk(dest_path_base):
             shutil.chown(dirpath, uid, gid)
             for filename in filenames:
-                self.logger.info(f"{Path(dirpath) / filename} - {uid}:{gid}")
+                self.logger.debug(f"{Path(dirpath) / filename} - {uid}:{gid}")
                 shutil.chown(Path(dirpath) / filename, uid, gid)
 
         self.logger.info("Copy complete.")

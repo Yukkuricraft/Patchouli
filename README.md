@@ -8,7 +8,7 @@ Patchouli is a tool that aims to allow Minecraft server administrators to manage
 However, managing configurations and plugins in multiple environments poses the problem of safely and reliably copying appropriate configs and plugins as well as version controlling changes. Patchouli aims to solve this problem by creating a `git` integrated tool to help automate these processes.
 
 #### Use Case
-This tool was created to be used in conjunction with [Yukkuricraft/Yukkuricraft](../Yukkuricraft) to manage configs in a multi-env containerized setup for the [Yukkuricraft](https://yukkuricraft.net) Minecraft server.
+This tool was created to be used in conjunction with [Yukkuricraft/Yukkuricraft](https://github.com/Yukkuricraft/Yukkuricraft) to manage configs in a multi-env containerized setup for the [Yukkuricraft](https://yukkuricraft.net) Minecraft server.
 
 ## Using Patchouli
 Patchouli is to be used as a `git` subcommand.

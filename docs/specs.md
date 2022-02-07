@@ -20,3 +20,31 @@ Create git repository per server being managed. The state of the repo and the st
 - Vice versa
 
 ### Copy files from one env to another
+
+### `git patchy status` and `diff`
+
+
+## Command Usage
+
+```
+# General Commands
+git patchy info
+git patchy status
+git patchy diff
+
+# Plugin Config Management
+# Maybe all copy commands can have --include-jars as an arg to also copy the jars.
+git patchy plugins show
+git patchy plugins cp-to-vcs dev1 --filter=WorldEdit # Copy dev1 to VCS, but only WorldEdit configs
+git patchy plugins cp-from-vcs dev1 --filter=WorldEdit # Copy VCS to dev1
+git patchy plugins cp-env prod dev1 --filter=CommandBoook # Copy env to env, must supply both src/dest
+
+
+# Server Config Management
+git patchy server show
+git patchy server cp-to-vcs dev1 --filter=WorldEdit # Copy dev1 to VCS, but only WorldEdit configs
+git patchy server cp-from-vcs dev1 --filter=WorldEdit # Copy VCS to dev1
+git patchy server cp-env prod dev1 --filter=CommandBoook # Copy env to env, must supply both src/dest
+```
+
+

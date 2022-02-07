@@ -20,4 +20,4 @@ for env_path in Path(config.base_path).iterdir():
     if re.match(config.env_name_regex, env_name):
         envs[env_name.upper()] = env_name.lower()
 
-ValidEnvs: enum.Enum = enum.Enum("ValidEnvs", envs)
+ValidEnv: enum.Enum = enum.Enum("ValidEnv", envs)

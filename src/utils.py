@@ -47,17 +47,18 @@ def __create_dir(path: Path, mode=0o755):
         os.umask(original_umask)
 
 
-def ensure_valid_env(env: str, create_missing_dirs: bool = False):
-    if not re.match(__CONFIG.env_name_regex, env):
+def ensure_valid_env(env: ValidEnv, create_missing_dirs: bool = False):
+    env_str = env.value
+    if not re.match(__CONFIG.env_name_regex, env_str):
         raise InvalidEnvironmentException(
-            f"Got '{env}' which was not a valid env name. Env names must satisfy the regex: {__CONFIG.env_name_regex}"
+            f"Got '{env_str}' which was not a valid env name. Env names must satisfy the regex: {__CONFIG.env_name_regex}"
         )
-    env_path = __BASE_PATH / env
+    env_path = __BASE_PATH / env_str
 
     if not env_path.exists():
         if create_missing_dirs:
             inp = input(
-                f"Folder for env '{env}' did not exist at {env_path}. Would you like to create it?y/N\n "
+                f"Folder for env '{env_str}' did not exist at {env_path}. Would you like to create it?y/N\n "
             )
             if len(inp) == 0 or inp[0].lower() != "y":
                 print("User rejected creation.")
@@ -69,14 +70,14 @@ def ensure_valid_env(env: str, create_missing_dirs: bool = False):
             __create_dir(env_path, mode=0o755)
         else:
             raise InvalidEnvironmentException(
-                f"Env '{env}' was a valid env name but could not find a directory for it! Please create {env_path} first."
+                f"Env '{env_str}' was a valid env name but could not find a directory for it! Please create {env_path} first."
             )
 
     plugins_path = env_path / "plugins"
     if not plugins_path.exists():
         if create_missing_dirs:
             inp = input(
-                f"Plugins folder did not exist for env:{env} - Would you like to create one? y/N\n"
+                f"Plugins folder did not exist for env:{env_str} - Would you like to create one? y/N\n"
             )
 
             if len(inp) == 0 or inp[0].lower() != "y":
@@ -89,7 +90,7 @@ def ensure_valid_env(env: str, create_missing_dirs: bool = False):
             __create_dir(plugins_path, mode=0o755)
         else:
             raise InvalidEnvironmentException(
-                f"Env '{env}' was a valid env name but could not find a plugin directory for it! Please create {plugins_path} first."
+                f"Env '{env_str}' was a valid env name but could not find a plugin directory for it! Please create {plugins_path} first."
             )
 
 
@@ -102,7 +103,7 @@ def get_uid_gid(user: str, group: str) -> Tuple[int, int]:
     return pwd.getpwnam(user).pw_uid, grp.getgrnam(group).gr_gid
 
 
-def get_plugin_path_base(env: str, create_missing_dirs: bool = False) -> Path:
+def get_plugin_path_base(env: ValidEnv, create_missing_dirs: bool = False) -> Path:
     if env == consts.VCS_ENV:
         """
         The VCS "env" is a special env that refers to the VCS repo instead of an env folder under config.base_path
@@ -113,7 +114,7 @@ def get_plugin_path_base(env: str, create_missing_dirs: bool = False) -> Path:
         create_missing_dirs=create_missing_dirs,
     )
 
-    return __BASE_PATH / env / "plugins"
+    return __BASE_PATH / env.value / "plugins"
 
 
 def get_plugin_name_from_jar(jar_path: PluginJar) -> str:

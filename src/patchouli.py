@@ -29,7 +29,7 @@ class Patchouli:
     config: Config
     logger: logging.Logger
 
-    target_env: str
+    target_env: ValidEnv
     base_path: Path
 
     plugin_names: Set[PluginName] = set()
@@ -44,7 +44,7 @@ class Patchouli:
         self,
         config: Config,
         logger: Optional[logging.Logger] = None,
-        target_env: Optional[str] = None,
+        target_env: Optional[ValidEnv] = None,
         create_missing_dirs: Optional[bool] = None,
     ):
         self.config = config
@@ -91,7 +91,7 @@ class Patchouli:
 
         return all_valid_config_files, all_ignored_paths_and_dirs
 
-    def populate_plugin_data(self, target_env: str) -> None:
+    def populate_plugin_data(self, target_env: ValidEnv) -> None:
         # Jars
         jar_paths = [
             x
@@ -120,7 +120,9 @@ class Patchouli:
             plugin_name = plugin_dir.name
 
             if plugin_name not in self.plugin_names:
-                raise UnidentifiablePluginDirException(plugin_dir)
+                raise UnidentifiablePluginDirException(
+                    f"Could not find a plugin to associate with the directory '{plugin_dir}'. Does the .jar file for this plugin exist?"
+                )
 
             self.plugin_dir_mapping[plugin_name] = plugin_dir
 
@@ -161,14 +163,18 @@ class Patchouli:
                 for file in self.plugin_data_mapping[plugin]:
                     self.logger.info(f"- DataFile: {file}")
 
-    def sync_vcs_with_env(self, src_env: Optional[str], dest_env: Optional[str]):
+    def sync_vcs_with_env(
+        self, src_env: Optional[ValidEnv], dest_env: Optional[ValidEnv]
+    ):
         """
         Direction can go either way, vcs -> env or env -> vcs.
         Direction is defined by src_env and dest_env inputs. Direction should be handled by git-patchy
+
+        One of the src_env or dest_env must be mytypes.ValidEnvs.VCS
         """
 
     @utils.ensure_root
-    def copy_plugin_data(self, dest_env: Optional[str]):
+    def copy_plugin_data(self, dest_env: Optional[ValidEnv]):
         """
         The src_env is understood to be the target_env the class was initialized with.
         """

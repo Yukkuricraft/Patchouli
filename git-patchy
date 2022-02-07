@@ -2,11 +2,14 @@
 
 import os
 import sys
-from argparse import ArgumentParser
+import traceback
+from argparse import ArgumentParser, ArgumentTypeError
 from pathlib import Path
 
+from src.mytypes import *
 from src.patchouli import Patchouli
 from src.config import Config, get_config
+from src.exceptions import InvalidEnvironmentException
 import src.utils as utils
 
 class Runner:
@@ -46,12 +49,25 @@ class Runner:
 
     def list_envs(self):
         print("Valid envs:")
-        for path in Path(self.config.base_path).iterdir():
-            if path.is_dir():
-                print(f"- {path.name}")
+        for env in ValidEnv:
+            print(f"- {env.value}")
 
     def help(self):
         self.parser.print_help()
+
+    @staticmethod
+    def __validate_env(env_str: str):
+        try:
+            env = ValidEnv(env_str)
+            utils.ensure_valid_env(env)
+        except ValueError as e:
+            raise ArgumentTypeError(f"The provided env '{env_str}' was not valid. Must be one of {[env.name for env in ValidEnv]} (Case insensitive)")
+        except InvalidEnvironmentException as e:
+            raise ArgumentError from e
+        except Exception as e:
+            traceback.print_exc()
+            raise e
+        return env
 
     def show(self):
         parser = ArgumentParser(description="Shows plugin information", usage='''git patchy show [--env=prod] ''')
@@ -59,6 +75,7 @@ class Runner:
         parser.add_argument(
             "--env",
             default=None,
+            type=self.__validate_env,
             help="Changes what environment we target. This is also used as the 'src_env' environment for commands that need a src/dest.",
         )
 
@@ -70,8 +87,8 @@ class Runner:
     def copy_to(self):
         parser = ArgumentParser(description="Copies configs from one env to another. Must be run as root.", usage='''sudo git patchy copy-to --src_env="prod" --dest_env="dev1"''')
         parser = utils.add_default_argparse_args(parser)
-        parser.add_argument('--src_env', default=None, help="Environment to copy files from.")
-        parser.add_argument('--dest_env', default=None, help="Environment to copy files to.")
+        parser.add_argument('--src_env', default=None, type=self.__validate_env, help="Environment to copy files from.")
+        parser.add_argument('--dest_env', default=None, type=self.__validate_env, help="Environment to copy files to.")
 
         args = parser.parse_args(sys.argv[2:])
 

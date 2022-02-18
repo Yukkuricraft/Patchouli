@@ -20,4 +20,5 @@ for env_path in Path(config.base_path).iterdir():
     if re.match(config.env_name_regex, env_name):
         envs[env_name.upper()] = env_name.lower()
 
-ValidEnv: enum.Enum = enum.Enum("ValidEnv", envs)
+# https://github.com/python/mypy/issues/5317
+Environment: enum.Enum = enum.Enum("Environment", envs)  # type: ignore

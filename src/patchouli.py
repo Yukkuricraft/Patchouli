@@ -4,16 +4,8 @@ import sys
 import shutil
 
 import logging
-import logging.config
 
 from pathlib import Path
-
-configpath = Path(__file__).parent / "logging.conf"
-logging.config.fileConfig(configpath)
-
-path_root = Path(__file__).parents[1]
-sys.path.append(str(path_root))
-
 from typing import Optional, Set, Dict, List, Tuple
 
 import src.utils as utils
@@ -29,7 +21,7 @@ class Patchouli:
     config: Config
     logger: logging.Logger
 
-    target_env: ValidEnv
+    target_env: Environment
     base_path: Path
 
     plugin_names: Set[PluginName] = set()
@@ -44,14 +36,16 @@ class Patchouli:
         self,
         config: Config,
         logger: Optional[logging.Logger] = None,
-        target_env: Optional[ValidEnv] = None,
+        target_env: Optional[Environment] = None,
         create_missing_dirs: Optional[bool] = None,
     ):
         self.config = config
         self.logger = logger if logger is not None else logging.getLogger(__name__)
 
         self.target_env = (
-            target_env if target_env is not None else self.config.default_env
+            target_env
+            if target_env is not None
+            else Environment(self.config.default_env)
         )
         self.base_path = Path(self.config.base_path)
 
@@ -91,7 +85,7 @@ class Patchouli:
 
         return all_valid_config_files, all_ignored_paths_and_dirs
 
-    def populate_plugin_data(self, target_env: ValidEnv) -> None:
+    def populate_plugin_data(self, target_env: Environment) -> None:
         # Jars
         jar_paths = [
             x
@@ -135,7 +129,9 @@ class Patchouli:
             self.discarded_files.update(ignored_files_and_dirs)
 
     def print_plugin_data(self) -> None:
-        self.logger.info(f"Printing plugin data for environment: '{self.target_env}'")
+        self.logger.info(
+            f"Printing plugin data for environment: '{self.target_env.value}'"
+        )
 
         self.logger.debug("")
         self.logger.debug("")
@@ -164,26 +160,26 @@ class Patchouli:
                     self.logger.info(f"- DataFile: {file}")
 
     def sync_vcs_with_env(
-        self, src_env: Optional[ValidEnv], dest_env: Optional[ValidEnv]
+        self, src_env: Optional[Environment], dest_env: Optional[Environment]
     ):
         """
         Direction can go either way, vcs -> env or env -> vcs.
         Direction is defined by src_env and dest_env inputs. Direction should be handled by git-patchy
 
-        One of the src_env or dest_env must be mytypes.ValidEnvs.VCS
+        One of the src_env or dest_env must be mytypes.Environments.VCS
         """
 
     @utils.ensure_root
-    def copy_plugin_data(self, dest_env: Optional[ValidEnv]):
+    def copy_plugin_data(self, dest_env: Optional[Environment]):
         """
         The src_env is understood to be the target_env the class was initialized with.
         """
+        dest_env = dest_env if dest_env is not None else self.config.default_copy_to_env
         utils.ensure_valid_env(
             dest_env,
             create_missing_dirs=True,
         )
 
-        dest_env = dest_env if dest_env is not None else self.config.default_copy_to_env
         dest_path_base = utils.get_plugin_path_base(
             dest_env, create_missing_dirs=self.create_missing_dirs
         )

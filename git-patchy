@@ -6,6 +6,17 @@ import traceback
 from argparse import ArgumentParser, ArgumentTypeError
 from pathlib import Path
 
+import logging
+import logging.config
+
+from pathlib import Path
+
+configpath = Path(__file__).parent / "src" / "logging.conf"
+logging.config.fileConfig(configpath)
+
+path_root = Path(__file__).parent
+sys.path.append(str(path_root))
+
 from src.mytypes import *
 from src.patchouli import Patchouli
 from src.config import Config, get_config
@@ -49,7 +60,7 @@ class Runner:
 
     def list_envs(self):
         print("Valid envs:")
-        for env in ValidEnv:
+        for env in Environment:
             print(f"- {env.value}")
 
     def help(self):
@@ -58,10 +69,10 @@ class Runner:
     @staticmethod
     def __validate_env(env_str: str):
         try:
-            env = ValidEnv(env_str)
+            env = Environment(env_str)
             utils.ensure_valid_env(env)
         except ValueError as e:
-            raise ArgumentTypeError(f"The provided env '{env_str}' was not valid. Must be one of {[env.name for env in ValidEnv]} (Case insensitive)")
+            raise ArgumentTypeError(f"The provided env '{env_str}' was not valid. Must be one of {[env.name for env in Environment]} (Case insensitive)")
         except InvalidEnvironmentException as e:
             raise ArgumentError from e
         except Exception as e:

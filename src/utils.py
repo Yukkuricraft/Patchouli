@@ -4,7 +4,7 @@ import sys
 import pwd
 import grp
 import getpass
-import yaml
+import yaml  # type: ignore
 import logging
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ def __create_dir(path: Path, mode=0o755):
         os.umask(original_umask)
 
 
-def ensure_valid_env(env: ValidEnv, create_missing_dirs: bool = False):
+def ensure_valid_env(env: Environment, create_missing_dirs: bool = False):
     env_str = env.value
     if not re.match(__CONFIG.env_name_regex, env_str):
         raise InvalidEnvironmentException(
@@ -103,7 +103,7 @@ def get_uid_gid(user: str, group: str) -> Tuple[int, int]:
     return pwd.getpwnam(user).pw_uid, grp.getgrnam(group).gr_gid
 
 
-def get_plugin_path_base(env: ValidEnv, create_missing_dirs: bool = False) -> Path:
+def get_plugin_path_base(env: Environment, create_missing_dirs: bool = False) -> Path:
     if env == consts.VCS_ENV:
         """
         The VCS "env" is a special env that refers to the VCS repo instead of an env folder under config.base_path
@@ -137,7 +137,7 @@ def get_plugin_name_from_jar(jar_path: PluginJar) -> str:
 
 
 def filter_ignored_paths(path: Path) -> bool:
-    return not any([path_to_ignore in str(path) for path_to_ignore in []])
+    return not any([path_to_ignore in str(path) for path_to_ignore in []])  # type: ignore
 
 
 def __chop_prefix_from_paths(paths: List[Path]) -> List[Path]:
@@ -155,7 +155,7 @@ def find_all_files_with_exts(
     base_path: Path,
     extensions: List[str],
     paths_to_ignore: List[Path],
-) -> List[str]:
+) -> Tuple[List[Path], List[Path]]:
     """
     Extensions should have a dot in front, eg [".yml", ".yaml"]
     """

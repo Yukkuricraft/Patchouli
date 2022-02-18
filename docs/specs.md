@@ -42,9 +42,9 @@ git patchy plugins cp-env prod dev1 --filter=CommandBoook # Copy env to env, mus
 
 # Server Config Management
 git patchy server show
-git patchy server cp-to-vcs dev1 --filter=WorldEdit # Copy dev1 to VCS, but only WorldEdit configs
-git patchy server cp-from-vcs dev1 --filter=WorldEdit # Copy VCS to dev1
-git patchy server cp-env prod dev1 --filter=CommandBoook # Copy env to env, must supply both src/dest
+git patchy server cp-to-vcs dev1 # Copy dev1 to VCS, but only WorldEdit configs
+git patchy server cp-from-vcs dev1 # Copy VCS to dev1
+git patchy server cp-to-env prod dev1 # Copy env to env, must supply both src/dest
 ```
 
 

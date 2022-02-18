@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import yaml
+import yaml  # type: ignore
 from pprint import pprint
 from pathlib import Path
 
@@ -18,12 +18,12 @@ class ConfigNode:
         return self.data[name]
 
     def listnodes(self) -> List[str]:
-        return self.data.keys()
+        return list(self.data.keys())
 
     def items(
         self,
     ) -> List[Tuple[str,]]:
-        return self.data.items()
+        return list(self.data.items())  # type: ignore
 
     def __init__(self, data: Dict):
         self.data = {}

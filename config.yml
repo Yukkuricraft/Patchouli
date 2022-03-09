@@ -29,7 +29,7 @@ plugins:
     - bStats
 
   # Configuration for finding config files
-  config:
+  configs:
     # Default list of suffixes to look for in all plugin folders
     suffixes:
       - .yml
@@ -39,11 +39,23 @@ plugins:
       - .txt
 
     # Use this if you need to add or rem suffixes for specific plugins
+    # All "add" paths are evaluated first. Then the "rem" paths are evaluated. Patchouli will
+    #   remove paths evaluated as part of the "add" if there are any overlaps.
     suffixes_override:
-      LuckPerms:
+      LuckPerms: # This example will load json files as configs from the root of the plugindir, but explicitly exclude json files under json-storage/users.
         add:
-          - .json
+          - suffix: .json
+            path: .
         rem:
+          - suffix: .json
+            path: json-storage/users # We don't really make changes to user json. Rely on backups.
+      GriefDefender:
+        add:
+          - suffix: .json
+            path: .
+        rem:
+          - suffix: .conf
+            path: old_worlds
 
     # Subpaths of plugin folders to ignore.
     paths_to_ignore:

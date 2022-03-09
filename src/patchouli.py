@@ -14,6 +14,7 @@ from src.mytypes import *
 from src.exceptions import (
     UnidentifiablePluginDirException,
     InvalidEnvironmentException,
+    InvalidConfigurationException,
 )
 
 
@@ -21,14 +22,22 @@ class Patchouli:
     config: Config
     logger: logging.Logger
 
+    plugins_whitelist: Optional[List[PluginName]]
+    plugins_blacklist: Optional[List[PluginName]]
+
     target_env: Environment
     base_path: Path
+
+    config_suffixes: Set
+    config_paths_to_ignore: Dict[PluginName, List[Path]]
 
     plugin_names: Set[PluginName] = set()
     plugin_jar_mapping: Dict[PluginName, PluginJar] = {}
     plugin_dir_mapping: Dict[PluginName, PluginDir] = {}
     plugin_config_mapping: Dict[PluginName, List[PluginConfigFile]] = {}
     plugin_data_mapping: Dict[PluginName, List[PluginDataFile]] = {}
+
+    create_missing_dirs: bool
 
     discarded_files: Set[Path] = set()
 
@@ -38,9 +47,18 @@ class Patchouli:
         logger: Optional[logging.Logger] = None,
         target_env: Optional[Environment] = None,
         create_missing_dirs: Optional[bool] = None,
+        plugins_whitelist: Optional[List[PluginName]] = None,
+        plugins_blacklist: Optional[List[PluginName]] = None,
     ):
         self.config = config
         self.logger = logger if logger is not None else logging.getLogger(__name__)
+
+        if plugins_whitelist is not None and plugins_blacklist is not None:
+            raise InvalidConfigurationException(
+                "Cannot provide both a whitelist and blacklist"
+            )
+        self.plugins_whitelist = plugins_whitelist
+        self.plugins_blacklist = plugins_blacklist
 
         self.target_env = (
             target_env
@@ -49,11 +67,11 @@ class Patchouli:
         )
         self.base_path = Path(self.config.base_path)
 
-        plugincfg = self.config.plugins
-        self.config_suffixes = plugincfg.config.suffixes
+        pluginscfg = self.config.plugins
+        self.config_suffixes = set(pluginscfg.configs.suffixes)
         self.config_paths_to_ignore = {
             plugin_name: [Path(path) for path in paths]
-            for plugin_name, paths in plugincfg.config.paths_to_ignore.items()
+            for plugin_name, paths in pluginscfg.configs.paths_to_ignore.items()
         }
 
         self.create_missing_dirs = (
@@ -74,18 +92,27 @@ class Patchouli:
             else self.config_paths_to_ignore[plugin_name]
         )
 
+        suffixes_to_search = self.config_suffixes
+        suffixes_override = (
+            self.config.plugins.configs.suffixes_override.get_or_default(plugin_name)
+        )
+
         (
             all_valid_config_files,
             all_ignored_paths_and_dirs,
         ) = utils.find_all_files_with_exts(
             base_path=plugin_dir,
-            extensions=self.config_suffixes,
+            extensions=suffixes_to_search,
             paths_to_ignore=paths_to_ignore,
+            suffixes_override=suffixes_override,
         )
 
         return all_valid_config_files, all_ignored_paths_and_dirs
 
     def populate_plugin_data(self, target_env: Environment) -> None:
+        self.logger.debug("Populating plugin data with:")
+        self.logger.debug(f" - Whitelist: {self.plugins_whitelist}")
+        self.logger.debug(f" - Blacklist: {self.plugins_blacklist}")
         # Jars
         jar_paths = [
             x
@@ -97,6 +124,11 @@ class Patchouli:
 
         for jar_path in jar_paths:
             plugin_name = utils.get_plugin_name_from_jar(jar_path)
+
+            if self.plugins_whitelist and plugin_name not in self.plugins_whitelist:
+                continue
+            elif self.plugins_blacklist and plugin_name in self.plugins_blacklist:
+                continue
 
             self.plugin_names.add(plugin_name)
             self.plugin_jar_mapping[plugin_name] = jar_path
@@ -112,6 +144,11 @@ class Patchouli:
 
         for plugin_dir in plugin_dirs:
             plugin_name = plugin_dir.name
+
+            if self.plugins_whitelist and plugin_name not in self.plugins_whitelist:
+                continue
+            elif self.plugins_blacklist and plugin_name in self.plugins_blacklist:
+                continue
 
             if plugin_name not in self.plugin_names:
                 raise UnidentifiablePluginDirException(

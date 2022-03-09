@@ -13,7 +13,7 @@ from zipfile import ZipFile
 from pathlib import Path
 from argparse import ArgumentParser
 
-from typing import Optional, Tuple, List, Dict, Callable
+from typing import Optional, Tuple, List, Dict, Callable, Set
 
 
 import src.constants as consts
@@ -96,6 +96,20 @@ def ensure_valid_env(env: Environment, create_missing_dirs: bool = False):
 
 def add_default_argparse_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument("--create-missing-dirs", default=None, action="store_true")
+    parser.add_argument(
+        "-w",
+        "--plugins-whitelist",
+        default=None,
+        nargs="+",
+        help="Explicit list of plugins to act on. Case sensitive. Incompatible with --plugins-blacklist",
+    )
+    parser.add_argument(
+        "-b",
+        "--plugins-blacklist",
+        default=None,
+        nargs="+",
+        help="Plugins to ignore. Case sensitive. Incompatible with --plugins-whitelist",
+    )
     return parser
 
 
@@ -140,10 +154,14 @@ def filter_ignored_paths(path: Path) -> bool:
     return not any([path_to_ignore in str(path) for path_to_ignore in []])  # type: ignore
 
 
-def __chop_prefix_from_paths(paths: List[Path]) -> List[Path]:
+def __chop_prefix_from_paths(paths: List[Path], next_dirname: str) -> List[Path]:
     rtn = []
 
     for path in paths:
+        if path.name != next_dirname:
+            continue
+
+        logger.info([path, next_dirname])
         chopped = Path(*path.parts[1:])
         if len(chopped.parts) > 0:
             rtn.append(chopped)
@@ -151,34 +169,128 @@ def __chop_prefix_from_paths(paths: List[Path]) -> List[Path]:
     return rtn
 
 
+def __chop_prefix_from_suffixes_override(
+    suffixes_override: Optional[Dict[str, List[Dict]]], next_dirname: str
+) -> Optional[Dict[str, List[Dict]]]:
+    """ """
+    if suffixes_override is None:
+        return None
+
+    rtn = {}
+    for op in ["add", "rem"]:
+        if op not in suffixes_override:
+            continue
+
+        objs = []
+        for obj in suffixes_override[op]:
+            path = Path(obj["path"])
+            if path.parts and path.parts[0] != next_dirname:
+                logger.debug(
+                    f"[__chop_pre_suf_over] Dropping path:{path} as it does not match next_dirname:{next_dirname}"
+                )
+                continue
+            if len(path.parts) <= 1:
+                logger.debug(
+                    f"[__chop_pre_suf_over] Dropping path:{path} as it is <= len of 1"
+                )
+                continue
+
+            # Icky hardcoded literals.
+            # TODO: Eventually make dataclass defs for config shape.
+            objs.append(
+                {
+                    "suffix": obj["suffix"],
+                    "path": str(Path(*path.parts[1:])),  # :thinking:
+                }
+            )
+
+        rtn[op] = objs
+
+    return rtn
+
+
+def __process_paths_and_suffixes_for_child_dir(
+    extensions: Set[str],
+    paths_to_ignore: List[Path],
+    suffixes_override: Optional[Dict[str, List[Dict]]],
+    child_dirname: str,
+):
+    extensions = set(extensions)
+
+    if suffixes_override:
+        if "add" in suffixes_override:
+            for suffix_override in suffixes_override["add"]:
+                suffix = suffix_override["suffix"]
+
+                if suffix_override["path"] in [".", child_dirname]:
+                    logger.debug(
+                        f"Adding suffix:{suffix} to extensions for path:{suffix_override['path']}"
+                    )
+                    extensions.add(suffix)
+
+        if "rem" in suffixes_override:
+            for suffix_override in suffixes_override["rem"]:
+                suffix = suffix_override["suffix"]
+
+                if (
+                    suffix_override["path"] in [".", child_dirname]
+                    and suffix in extensions
+                ):
+                    logger.debug(
+                        f"Removing suffix:{suffix} from extensions for path:{suffix_override['path']}"
+                    )
+                    extensions.remove(suffix)
+
+    paths_to_ignore = __chop_prefix_from_paths(paths_to_ignore, child_dirname)
+
+    suffixes_override = __chop_prefix_from_suffixes_override(
+        suffixes_override, child_dirname
+    )
+
+    return extensions, paths_to_ignore, suffixes_override
+
+
 def find_all_files_with_exts(
     base_path: Path,
-    extensions: List[str],
+    extensions: Set[str],
     paths_to_ignore: List[Path],
+    suffixes_override: Optional[Dict[str, List[Dict]]],
 ) -> Tuple[List[Path], List[Path]]:
     """
     Extensions should have a dot in front, eg [".yml", ".yaml"]
     """
+    extensions = set(extensions)
 
-    logger.debug(f"Args: {[base_path, extensions, paths_to_ignore]}")
     all_valid_files = []
     all_invalid_files_and_dirs = []
 
     try:
         for child in base_path.iterdir():
+            next_dirname = child.name
             if any(
-                [child.name == str(ignored_path) for ignored_path in paths_to_ignore]
+                [next_dirname == str(ignored_path) for ignored_path in paths_to_ignore]
             ):
                 logger.debug(f"Ignored path - Skipping: {child}")
                 all_invalid_files_and_dirs.append(child)
                 continue
 
             if child.is_dir():
+
+                (
+                    new_extensions,
+                    new_paths_to_ignore,
+                    new_suffixes_override,
+                ) = __process_paths_and_suffixes_for_child_dir(
+                    extensions, paths_to_ignore, suffixes_override, next_dirname
+                )
+
                 rec_valid_files, rec_invalid_files = find_all_files_with_exts(
                     base_path=child,
-                    extensions=extensions,
-                    paths_to_ignore=__chop_prefix_from_paths(paths_to_ignore),
+                    extensions=new_extensions,
+                    paths_to_ignore=new_paths_to_ignore,
+                    suffixes_override=new_suffixes_override,
                 )
+
                 all_valid_files.extend(rec_valid_files)
                 all_invalid_files_and_dirs.extend(rec_invalid_files)
             else:
@@ -186,10 +298,10 @@ def find_all_files_with_exts(
                     logger.debug(f"Invalid suffix - Skipping: {child}")
                     all_invalid_files_and_dirs.append(child)
                     continue
-
                 all_valid_files.append(child)
 
         return all_valid_files, all_invalid_files_and_dirs
+
     except PermissionError as e:
         logger.warning(f"Skipping {base_path} due to a permission error!!")
         return [], [base_path]

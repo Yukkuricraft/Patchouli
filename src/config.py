@@ -17,8 +17,24 @@ class ConfigNode:
     def __getitem__(self, name):
         return self.data[name]
 
+    def __contains__(self, item):
+        return item in self.data
+
+    def __str__(self):
+        rtn = "{"
+        for k, v in self.data.items():
+            rtn += f"{k}: {v}, "
+        rtn += "}"
+
+        return rtn
+
     def listnodes(self) -> List[str]:
         return list(self.data.keys())
+
+    def get_or_default(self, name, default=None):
+        if name not in self.data:
+            return default
+        return self.__getitem__(name)
 
     def items(
         self,

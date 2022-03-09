@@ -3,7 +3,7 @@
 import os
 import sys
 import traceback
-from argparse import ArgumentParser, ArgumentTypeError
+from argparse import ArgumentParser, ArgumentTypeError, ArgumentError
 from pathlib import Path
 
 import logging
@@ -23,11 +23,14 @@ from src.config import Config, get_config
 from src.exceptions import InvalidEnvironmentException
 import src.utils as utils
 
+
 class Runner:
     config: Config
 
     def __init__(self):
-        self.parser = ArgumentParser(description="Patchouli Plugin Manager", usage='''git patchy [help|show]
+        self.parser = ArgumentParser(
+            description="Patchouli Plugin Manager",
+            usage="""git patchy [help|show]
     Note:You can add "--help" after most subcommands to get more detailed help.
 
     help
@@ -39,10 +42,13 @@ class Runner:
     show
         Prints plugin information and various metadata about them.
         Currently prints plugin name, jar path, folder path if exists, and config file list if exists
-''')
-        self.parser.add_argument("command", help="Subcommand to run: 'git patchy [help|show]'")
+""",
+        )
+        self.parser.add_argument(
+            "command", help="Subcommand to run: 'git patchy [help|show]'"
+        )
 
-        if len(sys.argv)==1:
+        if len(sys.argv) == 1:
             self.parser.print_help(sys.stderr)
             sys.exit(1)
 
@@ -52,7 +58,7 @@ class Runner:
 
         subcommand = self.args.command.replace("-", "_")
         if not hasattr(self, subcommand):
-            print('Unrecognized subcommand')
+            print("Unrecognized subcommand")
             self.parser.print_help()
             sys.exit(1)
 
@@ -72,16 +78,21 @@ class Runner:
             env = Environment(env_str)
             utils.ensure_valid_env(env)
         except ValueError as e:
-            raise ArgumentTypeError(f"The provided env '{env_str}' was not valid. Must be one of {[env.name for env in Environment]} (Case insensitive)")
+            raise ArgumentTypeError(
+                f"The provided env '{env_str}' was not valid. Must be one of {[env.name for env in Environment]} (Case insensitive)"
+            )
         except InvalidEnvironmentException as e:
-            raise ArgumentError from e
+            raise ArgumentError from e  # type: ignore
         except Exception as e:
             traceback.print_exc()
             raise e
         return env
 
     def show(self):
-        parser = ArgumentParser(description="Shows plugin information", usage='''git patchy show [--env=prod] ''')
+        parser = ArgumentParser(
+            description="Shows plugin information",
+            usage="""git patchy show [--env=prod] """,
+        )
         parser = utils.add_default_argparse_args(parser)
         parser.add_argument(
             "--env",
@@ -92,18 +103,41 @@ class Runner:
 
         args = parser.parse_args(sys.argv[2:])
 
-        patchy = Patchouli(config=self.config, target_env=args.env)
+        patchy = Patchouli(
+            config=self.config,
+            target_env=args.env,
+            plugins_whitelist=args.plugins_whitelist,
+            plugins_blacklist=args.plugins_blacklist,
+        )
         patchy.print_plugin_data()
 
     def copy_to(self):
-        parser = ArgumentParser(description="Copies configs from one env to another. Must be run as root.", usage='''sudo git patchy copy-to --src_env="prod" --dest_env="dev1"''')
+        parser = ArgumentParser(
+            description="Copies configs from one env to another. Must be run as root.",
+            usage='''sudo git patchy copy-to --src_env="prod" --dest_env="dev1"''',
+        )
         parser = utils.add_default_argparse_args(parser)
-        parser.add_argument('--src_env', default=None, type=self.__validate_env, help="Environment to copy files from.")
-        parser.add_argument('--dest_env', default=None, type=self.__validate_env, help="Environment to copy files to.")
+        parser.add_argument(
+            "--src_env",
+            default=None,
+            type=self.__validate_env,
+            help="Environment to copy files from.",
+        )
+        parser.add_argument(
+            "--dest_env",
+            default=None,
+            type=self.__validate_env,
+            help="Environment to copy files to.",
+        )
 
         args = parser.parse_args(sys.argv[2:])
 
-        patchy = Patchouli(config=self.config, target_env=args.src_env)
+        patchy = Patchouli(
+            config=self.config,
+            target_env=args.src_env,
+            plugins_whitelist=args.plugins_whitelist,
+            plugins_blacklist=args.plugins_blacklist,
+        )
         patchy.copy_plugin_data(args.dest_env)
 
 

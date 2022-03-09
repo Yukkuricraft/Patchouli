@@ -14,5 +14,9 @@ class InvalidEnvironmentException(Exception):
     pass
 
 
+class InvalidConfigurationException(Exception):
+    pass
+
+
 class MustBeRunAsRootException(Exception):
     pass

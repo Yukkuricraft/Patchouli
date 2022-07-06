@@ -4,7 +4,7 @@ import enum
 from pathlib import Path
 from typing import TypeAlias
 
-from src.config import get_config
+from src.common.config import get_config
 
 PluginName: TypeAlias = str
 PluginJar: TypeAlias = Path

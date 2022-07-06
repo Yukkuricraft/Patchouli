@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional, Set, Dict, List, Tuple
 
 import src.utils as utils
-from src.config import Config
+from src.common.config import Config
 from src.mytypes import *
 from src.exceptions import (
     UnidentifiablePluginDirException,
@@ -211,7 +211,11 @@ class Patchouli:
         """
         The src_env is understood to be the target_env the class was initialized with.
         """
-        dest_env = dest_env if dest_env is not None else self.config.default_copy_to_env
+        dest_env = (
+            dest_env
+            if dest_env is not None
+            else Environment(self.config.default_copy_to_env)
+        )
         utils.ensure_valid_env(
             dest_env,
             create_missing_dirs=True,

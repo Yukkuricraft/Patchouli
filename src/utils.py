@@ -18,7 +18,7 @@ from typing import Optional, Tuple, List, Dict, Callable, Set
 
 import src.constants as consts
 from src.mytypes import *
-from src.config import Config, get_config
+from src.common.config import Config, get_config
 from src.exceptions import (
     InvalidPathException,
     InvalidPluginException,

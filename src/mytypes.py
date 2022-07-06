@@ -4,6 +4,7 @@ import enum
 from pathlib import Path
 from typing import TypeAlias
 
+from src.constants import CONFIG_NAME
 from src.common.config import get_config
 
 PluginName: TypeAlias = str
@@ -14,7 +15,7 @@ PluginDataFile: TypeAlias = Path
 
 envs = {"VCS": "vcs"}
 
-config = get_config()
+config = get_config(CONFIG_NAME)
 for env_path in Path(config.base_path).iterdir():
     env_name = env_path.name
     if re.match(config.env_name_regex, env_name):

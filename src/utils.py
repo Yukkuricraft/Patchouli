@@ -19,6 +19,7 @@ from typing import Optional, Tuple, List, Dict, Callable, Set
 import src.constants as consts
 from src.mytypes import *
 from src.common.config import Config, get_config
+from src.constants import CONFIG_NAME
 from src.exceptions import (
     InvalidPathException,
     InvalidPluginException,
@@ -26,7 +27,7 @@ from src.exceptions import (
     MustBeRunAsRootException,
 )
 
-__CONFIG = get_config()
+__CONFIG = get_config(CONFIG_NAME)
 __BASE_PATH = Path(__CONFIG.base_path)
 
 

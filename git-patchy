@@ -20,6 +20,7 @@ sys.path.append(str(path_root))
 from src.mytypes import *
 from src.patchouli import Patchouli
 from src.common.config import Config, get_config
+from src.constants import CONFIG_NAME
 from src.exceptions import InvalidEnvironmentException
 import src.utils as utils
 
@@ -54,7 +55,7 @@ class Runner:
 
         self.args = self.parser.parse_args(sys.argv[1:2])
 
-        self.config = get_config()
+        self.config = get_config(CONFIG_NAME)
 
         subcommand = self.args.command.replace("-", "_")
         if not hasattr(self, subcommand):
